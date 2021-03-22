@@ -1,6 +1,7 @@
 package ovh.quinta.reseau.ui;
 
 import ovh.quinta.reseau.metier.Machine;
+import ovh.quinta.reseau.metier.Routeur;
 
 import javax.swing.*;
 import java.awt.*;
@@ -96,7 +97,8 @@ public class PanelCalcul extends DarkJPanel {
 		for(Machine m : machines) {
 			comboA.addItem(m.getName());
 			comboB.addItem(m.getName());
-			comboRoute.addItem(m.getName());
+			if(m instanceof Routeur)
+				comboRoute.addItem(m.getName());
 		}
 		repaint();
 	}
