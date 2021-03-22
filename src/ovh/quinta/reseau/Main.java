@@ -61,7 +61,13 @@ public class Main {
 		}
 
 		// Traitement du fichier en JSON
-		JSONObject obj = new JSONObject(stringBuilder.toString());
+		JSONObject obj = null;
+		try {
+			obj = new JSONObject(stringBuilder.toString());
+		}catch(JSONException jse) {
+			jse.printStackTrace();
+			System.exit(1);
+		}
 		JSONArray routeursArray = obj.getJSONArray("Routeurs");
 		JSONArray ordinateursArray = obj.getJSONArray("Ordinateurs");
 		JSONArray routesArray = obj.getJSONArray("Routes");
@@ -71,12 +77,12 @@ public class Main {
 		// effectuera tous les ajouts présents avant l'erreur de syntaxe
 		for(Object s : routeursArray) {
 			if(s instanceof String) {
-				reseau.addRouteur(new Routeur((String)s));
+				reseau.addRouteur(((String)s));
 			}else throw new IllegalArgumentException("Le fichier n'a pas une syntaxe valide (Routeurs)");
 		}
 		for(Object s : ordinateursArray) {
 			if(s instanceof String) {
-				reseau.addOrdinateur(new Ordinateur((String)s));
+				reseau.addOrdinateur(((String)s));
 			}else throw new IllegalArgumentException("Le fichier n'a pas une syntaxe valide (Ordinateurs)");
 		}
 		for(Object route : routesArray) {
@@ -91,7 +97,8 @@ public class Main {
 				// Empêche la création de route entre deux ordinateurs
 				if(a instanceof Ordinateur && b instanceof Ordinateur) throw new IllegalArgumentException("Impossible de créer une route entre 2 ordinateurs");
 				assert a != null && b != null;
-				reseau.addRoute(a, b, (int)jRoute.get(2));
+				int cost = jRoute.length() == 3 ? (int) jRoute.get(2) : 1;
+				reseau.addRoute(a, b, cost);
 			}catch(Exception e) {
 				e.printStackTrace();
 			}

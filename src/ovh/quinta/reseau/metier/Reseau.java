@@ -60,6 +60,7 @@ public class Reseau {
 		System.setProperty("org.graphstream.ui", "swing");
 		graph = new SingleGraph("Réseau");
 		graph.setAttribute("ui.stylesheet", "graph {fill-color: #444;} ");
+		graph.setAttribute("ui.title", "Réseau");
 		graph.display();
 	}
 
@@ -195,11 +196,8 @@ public class Reseau {
 	 * @param name le nom du routeur à ajouter
 	 */
 	public void addRouteur(String name) {
-		if(getRouteurs().stream().map(Routeur::toString).anyMatch(s -> s.equals(name))) {
-			main.errorMessage("Un routeur avec ce nom existe déjà");
-			return;
-		}
-		addRouteur(new Routeur(name));
+		if(doesntExist(name))
+			addRouteur(new Routeur(name));
 	}
 
 	/**
@@ -218,11 +216,21 @@ public class Reseau {
 	 * @param name le nom de l'ordinateur à ajouter
 	 */
 	public void addOrdinateur(String name) {
-		if(getOrdinateurs().stream().map(Ordinateur::toString).anyMatch(s -> s.equals(name))) {
-			main.errorMessage("Un ordinateur avec ce nom existe déjà");
-			return;
+		if(doesntExist(name))
+			addOrdinateur(new Ordinateur(name));
+	}
+
+	/**
+	 * Teste l'existance d'une machine à partir d'un nom
+	 * @param machineName le nom de la machine à tester
+	 * @return true si la machine existe, false sinon
+	 */
+	public boolean doesntExist(String machineName) {
+		if(getMachines().stream().map(Machine::toString).anyMatch(s -> s.equals(machineName))) {
+			main.errorMessage("Une machine avec ce nom (" + machineName + ") existe déjà");
+			return false;
 		}
-		addOrdinateur(new Ordinateur(name));
+		return true;
 	}
 
 	/**
@@ -232,6 +240,7 @@ public class Reseau {
 	 * @param cost Le cout de la route entre les deux machines
 	 */
 	public void addRoute(Machine a, Machine b, int cost) {
+		if(a == null || b == null) return;
 		if(a instanceof Ordinateur && b instanceof Ordinateur) return; // A et B tous 2 ordinateur
 		if(a instanceof Ordinateur && !getRoutesFrom(a).isEmpty() || b instanceof Ordinateur && !getRoutesFrom(b).isEmpty())
 			return; // A ou B est un ordinateur déjà connecté
