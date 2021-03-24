@@ -5,6 +5,7 @@ import org.graphstream.graph.Edge;
 import org.graphstream.graph.Graph;
 import org.graphstream.graph.Node;
 import org.graphstream.graph.Path;
+import org.graphstream.graph.implementations.Graphs;
 import org.graphstream.graph.implementations.SingleGraph;
 import ovh.quinta.reseau.Main;
 
@@ -350,9 +351,19 @@ public class Reseau {
 	 * @return Le chemin le plus court entre les deux noeuds
 	 */
 	public Path shortestPath(Node a, Node b) {
+		return shortestPathGraph(a, b, graph);
+	}
+
+	/**
+	 * Retourne le chemin le plus court entre deux noeuds du graphique
+	 * @param a Le noeud source
+	 * @param b Le noeud de destination
+	 * @return Le chemin le plus court entre les deux noeuds
+	 */
+	public Path shortestPathGraph(Node a, Node b, Graph g) {
 		assert a != null && b != null;
 		Dijkstra dijkstra = new Dijkstra(Dijkstra.Element.EDGE, null, "length");
-		dijkstra.init(graph);
+		dijkstra.init(g);
 		dijkstra.setSource(a);
 		dijkstra.compute();
 		return dijkstra.getPath(b);
@@ -381,40 +392,50 @@ public class Reseau {
 	 * @return La table de routage de la machine demandée sous forme d'une HashMap
 	 */
 	public Map<Machine, ArrayList<HashMap<Machine, Integer>>> tableRoutage(String machineName) {
+
+		// Crée une copie du graphique qui sera modifiée pour trouver la table de routage
+		Graph copy = Graphs.clone(graph);
+
 		// Crée la structure qui représente la table de routage
 		HashMap<Machine, ArrayList<HashMap<Machine, Integer>>> table = new HashMap<>();
 		// On récupère la machine à partir de laquelle on veut faire la table de routage
 		Machine machine = getMachine(machineName);
 		// On récupère les voisins de la machine
-		Stream<Node> neighbors = machine.node.neighborNodes();
+		Stream<Node> copyNeighbours = copy.getNode(machineName).neighborNodes();
+		Stream<Node> neighbours = machine.node.neighborNodes();
+
+		HashMap<String, Integer> costsFromMachine = new HashMap<>();
+		neighbours.forEach(n -> costsFromMachine.put(n.getId(), getRoute(machine, getMachine(n.getId())).getCost()));
+
+		ArrayList<Node> alCopyNeighbours = new ArrayList<>();
+		copyNeighbours.forEach(alCopyNeighbours::add);
+		copy.removeNode(machineName);
 		// Pour chaque machine
-		neighbors.forEach(neigh -> {
-			// On récupère le coût entre la machine et le voisin
-			int neighToMachineCost = getRoute(machine.node, neigh).getCost();
+		for(Node neigh : alCopyNeighbours) {
+			if(getMachine(neigh.getId()) instanceof Ordinateur) continue;
 			// Pour chaque machine du graphique
-			for(Machine m : getMachines()) {
+			int costFromMachine = costsFromMachine.get(neigh.getId());
+			for(Routeur r : getRouteurs()) {
 				// On passe la boucle si on est sur la machine de la table
-				if(m.equals(machine)) continue;
+				if(r.equals(machine)) continue;
 				// On récupère le chemin le plus court entre le voisin et chaque machine
-				Path shortest = shortestPath(neigh, m.node);
-				// On passe si le chemin repasse par la machine de la table
-				if(shortest.contains(machine.node)) continue;
+				Path shortest = shortestPathGraph(neigh, copy.getNode(r.name), copy);
 				// On calcule le coût de la route totale entre le voisin et la machine du réseau
 				int costFromNeigh = shortest.edges().mapToInt(e -> (int) e.getAttribute("length")).sum();
 				// On ajoute la valeur trouvée à la table de routage, ou on crée la ligne
-				if(table.containsKey(m)) {
-					ArrayList<HashMap<Machine, Integer>> costs = table.get(m);
+				if(table.containsKey(r)) {
+					ArrayList<HashMap<Machine, Integer>> costs = table.get(r);
 					HashMap<Machine, Integer> cost = new HashMap<>();
-					cost.put(getMachineFromNode(neigh), neighToMachineCost + costFromNeigh);
+					cost.put(getMachine(neigh.getId()), costFromMachine + costFromNeigh);
 					costs.add(cost);
 				}else {
-					table.put(m, new ArrayList<>());
+					table.put(r, new ArrayList<>());
 					HashMap<Machine, Integer> cost = new HashMap<>();
-					cost.put(getMachineFromNode(neigh), neighToMachineCost + costFromNeigh);
-					table.get(m).add(cost);
+					cost.put(getMachine(neigh.getId()), costFromMachine + costFromNeigh);
+					table.get(r).add(cost);
 				}
 			}
-		});
+		}
 		// On trie chaque ligne de la table pour afficher les couts dans l'ordre croissant
 		table.forEach((k, v) -> { // Pour trier les coûts du moins élevé au plus élevé
 			table.get(k).sort(Comparator.comparingInt(h2 -> h2.values().stream().findFirst().get()));
